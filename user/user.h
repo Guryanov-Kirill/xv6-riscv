@@ -1,4 +1,5 @@
 #define SBRK_ERROR ((char *)-1)
+#include "kernel/procinfo.h"
 
 struct stat;
 
@@ -25,6 +26,7 @@ char *sys_sbrk(int, int);
 int pause(int);
 int uptime(void);
 int sync(void);
+int ps_listinfo(struct procinfo *, int);
 
 // ulib.c
 int stat(const char *, struct stat *);
