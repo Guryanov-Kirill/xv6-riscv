@@ -164,10 +164,8 @@ sys_ps_listinfo(void)
     if (count < lim) {
       uint64 dst = uaddr + count * sizeof(struct procinfo);
 
-      // ИСПРАВЛЕНО: Ровно 5 аргументов в правильном для вашей ОС порядке типов данных
-      if (copyout(myproc()->pagetable, dst, (uint64)&pi, (char *)&pi,
+      if (copyout(myproc()->pagetable, myproc()->sz, dst, (char *)&pi,
                   sizeof(struct procinfo)) < 0) {
-        printk("asdasdasd");
         return -1;
       }
     }
