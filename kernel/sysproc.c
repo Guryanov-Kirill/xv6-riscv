@@ -6,6 +6,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "procinfo.h"
 
 uint64
 sys_exit(void)
@@ -109,4 +110,68 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_ps_listinfo(void)
+{
+  uint64 uaddr;
+  int lim;
+
+  argaddr(0, &uaddr);
+  argint(1, &lim);
+  if (uaddr == 0 || lim < 0) {
+    return -1;
+  }
+
+  extern struct proc proc[NPROC];
+  extern struct spinlock wait_lock;
+
+  int count = 0;
+
+  for (int i = 0; i < NPROC; i++) {
+    struct proc *p = &proc[i];
+
+    acquire(&p->lock);
+    if (p->state == UNUSED || p->state == USED) {
+      release(&p->lock);
+      continue;
+    }
+
+    struct procinfo pi;
+    pi.pid = p->pid;
+    pi.state = p->state;
+
+    for (int j = 0; j < 16; j++) {
+      pi.name[j] = p->name[j];
+      if (p->name[j] == '\0')
+        break;
+    }
+
+    release(&p->lock);
+
+    acquire(&wait_lock);
+    struct proc *parent = p->parent;
+    if (parent) {
+      acquire(&parent->lock);
+      pi.ppid = parent->pid;
+      release(&parent->lock);
+    } else {
+      pi.ppid = 0;
+    }
+    release(&wait_lock);
+
+    if (count < lim) {
+      uint64 dst = uaddr + count * sizeof(struct procinfo);
+
+      if (copyout(myproc()->pagetable, myproc()->sz, dst, (char *)&pi,
+                  sizeof(struct procinfo)) < 0) {
+        return -1;
+      }
+    }
+
+    count++;
+  }
+
+  return count;
 }
